@@ -1,0 +1,5 @@
+[project]
+dependencies = [
+    "cryptography"
+]
+description = "A Very Unique Encrypted Notes Taking App"
