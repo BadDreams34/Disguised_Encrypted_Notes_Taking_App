@@ -20,7 +20,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Unsevered")
         layout = QtWidgets.QVBoxLayout()
         self.box = QtWidgets.QComboBox()
-        self.box.addItems(["Access used","Password"])
+        self.box.addItems(["Access used"])
         self.box.setCurrentIndex(-1)
         layout.addWidget(self.box)
         self.box.hide()
@@ -76,12 +76,23 @@ class MainWindow(QtWidgets.QMainWindow):
             with open("enc.txt", "rb") as file:
                 text = file.read()
             if len(text) != 0:
-                if encryption.decrypt_file("enc.txt", password) == 0:
-                    print("Incorrect password")
-                    return
-
-            with open("enc.txt", 'ab') as file:
-                file.write((line + '\n').encode('utf-8'))
+                prev_pass = encryption.decrypt_file("enc.txt", password)
+                if prev_pass == 0:
+                    wrong_pas = QtWidgets.QDialog(self)
+                    pas_layout = QtWidgets.QVBoxLayout(wrong_pas)
+                    label = QtWidgets.QLabel("Please Check Your Password")
+                    ok_but = QtWidgets.QPushButton("Ok")
+                    pas_layout.addWidget(label)
+                    pas_layout.addWidget(ok_but)
+                    ok_but.clicked.connect(wrong_pas.accept)
+                    wrong_pas.exec()
+                else:
+                    with open("enc.txt", 'wb') as file:
+                        file.write(prev_pass + b'\n')
+                        file.write((line + '\n').encode('utf-8'))
+            else:
+                with open("enc.txt", 'ab') as file:
+                    file.write((line + '\n').encode('utf-8'))
 
             encryption.encrypt_file("enc.txt",password)
 
@@ -89,11 +100,47 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def opt_selected(self,text):
         if text == "Access used":
-            print("Needs a pass")
-            passw = input("Give the password")
-            encryption.decrypt_file("enc.txt", passw)
+            pass_dialog.show()
+
+
+class PassDialog(QtWidgets.QDialog):
+    def __init__(self):
+        super().__init__()
+        layout = QtWidgets.QVBoxLayout()
+
+        self.edit = QtWidgets.QLineEdit()
+        self.ok_but = QtWidgets.QPushButton("OK")
+        layout.addWidget(self.edit)
+        layout.addWidget(self.ok_but)
+        self.setLayout(layout)
+        self.ok_but.clicked.connect(self.on_click_ok)
+
+    def on_click_ok(self):
+       passwords = encryption.decrypt_file("enc.txt", self.edit.text())
+       if not passwords:
+           self.edit.clear()
+           wrong_pass = QtWidgets.QDialog(self)
+           pas_layout = QtWidgets.QVBoxLayout(wrong_pass)
+           label = QtWidgets.QLabel("Please Check Your Password")
+           ok_but = QtWidgets.QPushButton("Ok")
+           pas_layout.addWidget(label)
+           pas_layout.addWidget(ok_but)
+           ok_but.clicked.connect(wrong_pass.accept)
+           wrong_pass.exec()
+       else: # when entered password is correct
+           self.edit.clear()
+           pas_dialog = QtWidgets.QDialog(self)
+           pas_layout = QtWidgets.QVBoxLayout(pas_dialog)
+           print(passwords)
+           password = QtWidgets.QLabel(str(passwords))
+           pas_layout.addWidget(password)
+           pas_dialog.exec()
 
 app = QtWidgets.QApplication(sys.argv)
 window = MainWindow()
 window.show()
+pass_dialog = PassDialog()
+pass_dialog.hide()
 app.exec()
+
+
